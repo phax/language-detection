@@ -47,6 +47,25 @@ public class LangProfile {
     }
 
     /**
+     * Merge two language profiles together
+     * @param other other LangPorfile
+     */
+    public void merge(LangProfile other){
+        if(! this.name.equals(other.name)) return; // Illegal
+        for(int i =0; i < n_words.length; i++){
+            n_words[i] += other.n_words[i];
+        }
+        Set<String> keys = other.freq.keySet();
+        for(Iterator<String> i = keys.iterator(); i.hasNext();){
+            String key = i.next();
+            if(freq.containsKey(key)){
+                freq.put(key,freq.get(key) + other.freq.get(key));
+            }else{
+                freq.put(key,other.freq.get(key));
+            }
+        }
+    }
+    /**
      * Eliminate below less frequency n-grams and noise Latin alphabets
      */
     public void omitLessFreq() {

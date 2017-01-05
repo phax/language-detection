@@ -108,6 +108,13 @@ public class Detector {
     }
 
     /**
+     * Set number of trials variable
+     */
+    public void setTrials(int n_trial){
+        this.n_trial = n_trial;
+    }
+    
+    /**
      * Set prior information about language probabilities.
      * @param priorMap the priorMap to set
      * @throws LangDetectException 
@@ -333,7 +340,7 @@ public class Detector {
     }
 
     /**
-     * @param probabilities HashMap
+     * @param prob HashMap
      * @return lanugage candidates order by probabilities descendently
      */
     private ArrayList<Language> sortProbability(double[] prob) {

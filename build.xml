@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project name="langdetect" basedir="." default="main">
+    <!-- Created by Eclipse Runnable JAR file Export Wizard and updated using:
+         - https://ant.apache.org/manual/tutorial-HelloWorldWithAnt.html
+         - https://github.com/junit-team/junit4/wiki/Getting-started-%E2%80%93-Ant
+        
+         ANT 1.7 is required-->
+
+    <property name="src.dir"     value="src"/>
+    <property name="lib.dir"     value="lib"/>
+
+    <property name="build.dir"   value="build"/>
+    <property name="classes.dir" value="${build.dir}/classes"/>
+    <property name="jar.dir"     value="${build.dir}/jar"/>
+    <property name="test.dir"    value="${build.dir}/test"/>
+
+    <path id="classpath">
+        <fileset dir="${lib.dir}" includes="**/*.jar"/>
+        <pathelement location="${classes.dir}"/>
+    </path>
+
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="compile">
+        <mkdir dir="${classes.dir}"/>
+        <javac srcdir="${src.dir}" destdir="${classes.dir}" classpathref="classpath"
+               excludes="**/*Test.java" includeantruntime="false"/>
+        <copy todir="${classes.dir}">
+            <fileset dir="${src.dir}">
+                <exclude name="**/*.java"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="test-compile" depends="compile">
+        <mkdir dir="${test.dir}"/>
+        <javac srcdir="${src.dir}" destdir="${test.dir}" classpathref="classpath"
+               includes="**/*Test.java" includeantruntime="false"/>
+    </target>
+
+    <target name="test" depends="test-compile">
+        <junit printsummary="on" haltonfailure="yes" fork="true">
+            <classpath>
+                <path refid="classpath"/>
+                <pathelement location="${test.dir}"/>
+            </classpath>
+            <formatter type="brief" usefile="false" />
+            <batchtest>
+                <fileset dir="${src.dir}" includes="**/*Test.java" />
+            </batchtest>
+        </junit>
+    </target>
+
+    <target name="jar" depends="compile">
+        <jar destfile="${jar.dir}/${ant.project.name}.jar">
+            <manifest>
+                <attribute name="Main-Class" value="org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader"/>
+                <attribute name="Rsrc-Main-Class" value="com.cybozu.labs.langdetect.Command"/>
+                <attribute name="Class-Path" value="."/>
+                <attribute name="Rsrc-Class-Path" value="./ jsonic-1.2.0.jar"/>
+            </manifest>
+            <zipfileset src="jar-in-jar-loader.zip"/>
+            <fileset dir="${classes.dir}"/>
+            <zipfileset dir="${lib.dir}" includes="jsonic-1.2.0.jar"/>
+        </jar>
+    </target>
+
+    <target name="main" depends="clean,jar"/>
+
+</project>

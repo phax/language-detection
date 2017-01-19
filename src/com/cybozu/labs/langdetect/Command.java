@@ -139,11 +139,15 @@ public class Command {
                         FileInputStream is = new FileInputStream(file);
                         LangProfile old_profile = JSON.decode(is, LangProfile.class);
                         profile.merge(old_profile);
-                    }catch(Exception e){}
+                    }catch(JSONException e){
+                      e.printStackTrace();
+                    }catch(IOException e){
+                      e.printStackTrace();
+                    }
                 }else {
                     profile.omitLessFreq();
                 }
-                profile.omitLessFreq();
+
 
                 File profile_path = new File(get("directory") + "/profiles/" + lang);
                 os = new FileOutputStream(profile_path);
@@ -196,7 +200,11 @@ public class Command {
                     FileInputStream is = new FileInputStream(profile_path);
                     LangProfile old_profile = JSON.decode(is, LangProfile.class);
                     profile.merge(old_profile);
-                }catch(Exception e){}
+                }catch(JSONException e){
+                  e.printStackTrace();
+                }catch(IOException e){
+                  e.printStackTrace();
+                }
             }else {
                 profile.omitLessFreq();
             }

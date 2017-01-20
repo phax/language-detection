@@ -134,7 +134,20 @@ public class Command {
             FileOutputStream os = null;
             try {
                 LangProfile profile = GenProfile.loadFromWikipediaAbstract(lang, file);
-                profile.omitLessFreq();
+                if(get("update") != null){
+                    try {
+                        FileInputStream is = new FileInputStream(file);
+                        LangProfile old_profile = JSON.decode(is, LangProfile.class);
+                        profile.merge(old_profile);
+                    }catch(JSONException e){
+                      e.printStackTrace();
+                    }catch(IOException e){
+                      e.printStackTrace();
+                    }
+                }else {
+                    profile.omitLessFreq();
+                }
+
 
                 File profile_path = new File(get("directory") + "/profiles/" + lang);
                 os = new FileOutputStream(profile_path);
@@ -181,9 +194,21 @@ public class Command {
         FileOutputStream os = null;
         try {
             LangProfile profile = GenProfile.loadFromText(lang, file);
-            profile.omitLessFreq();
-
             File profile_path = new File(lang);
+            if(get("update") != null){
+                try {
+                    FileInputStream is = new FileInputStream(profile_path);
+                    LangProfile old_profile = JSON.decode(is, LangProfile.class);
+                    profile.merge(old_profile);
+                }catch(JSONException e){
+                  e.printStackTrace();
+                }catch(IOException e){
+                  e.printStackTrace();
+                }
+            }else {
+                profile.omitLessFreq();
+            }
+
             os = new FileOutputStream(profile_path);
             JSON.encode(profile, os);
         } catch (JSONException e) {
@@ -198,7 +223,42 @@ public class Command {
             } catch (IOException e) {}
         }
     }
+    /**
+     * Omit less frequent terms from language profile
+     *
+     * <pre>
+     * usage: --trim-profile [profile file path]
+     * </pre>
+     *
+     */
+    private void cleanupProfile() {
+        if (arglist.size() != 1) {
+            System.err.println("Need to specify profile file path");
+            return;
+        }
 
+
+        FileOutputStream os = null;
+        FileInputStream is = null;
+        try {
+            File profile_path = new File(arglist.get(0));
+            is = new FileInputStream(profile_path);
+            LangProfile profile = JSON.decode(is, LangProfile.class);
+            profile.omitLessFreq();
+            is.close();
+            os = new FileOutputStream(profile_path);
+            JSON.encode(profile, os);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }  finally {
+            try {
+                if (os!=null) os.close();
+                if (is!=null) is.close();
+            } catch (IOException e) {}
+        }
+    }
     /**
      * Language detection test for each file (--detectlang option)
      * 
@@ -319,6 +379,7 @@ public class Command {
         command.addOpt("-a", "alpha", "" + DEFAULT_ALPHA);
         command.addOpt("-s", "seed", null);
         command.addOpt("-l", "lang", null);
+        command.addOpt("-u","update", null);
         command.parse(args);
 
         if (command.hasOpt("--genprofile")) {
@@ -329,6 +390,8 @@ public class Command {
             command.detectLang();
         } else if (command.hasOpt("--batchtest")) {
             command.batchTest();
+        } else if(command.hasOpt("--trim-profile")){
+            command.cleanupProfile();
         }
     }
 

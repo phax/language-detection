@@ -1,121 +1,194 @@
 package com.cybozu.labs.langdetect.util;
 
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
+import com.helger.json.IJson;
+import com.helger.json.IJsonObject;
+
 /**
- * {@link LangProfile} is a Language Profile Class.
- * Users don't use this class directly.
- * 
+ * {@link LangProfile} is a Language Profile Class. Users don't use this class
+ * directly.
+ *
  * @author Nakatani Shuyo
  */
-public class LangProfile {
-    private static final int MINIMUM_FREQ = 2;
-    private static final int LESS_FREQ_RATIO = 100000;
-    public String name = null;
-    public HashMap<String, Integer> freq = new HashMap<String, Integer>();
-    public int[] n_words = new int[NGram.N_GRAM];
+public class LangProfile
+{
+  private static final int MINIMUM_FREQ = 2;
+  private static final int LESS_FREQ_RATIO = 100000;
 
-    /**
-     * Constructor for JSONIC 
-     */
-    public LangProfile() {}
+  String m_sName;
+  final Map <String, Integer> m_aFreq = new HashMap<> ();
+  final int [] m_aNWords = new int [NGram.N_GRAM];
 
-    /**
-     * Normal Constructor
-     * @param name language name
-     */
-    public LangProfile(String name) {
-        this.name = name;
+  /**
+   * Constructor for JSONIC
+   */
+  public LangProfile ()
+  {}
+
+  /**
+   * Normal Constructor
+   *
+   * @param sName
+   *        language name
+   */
+  public LangProfile (final String sName)
+  {
+    m_sName = sName;
+  }
+
+  public String getName ()
+  {
+    return m_sName;
+  }
+
+  public Set <String> getAllGrams ()
+  {
+    return m_aFreq.keySet ();
+  }
+
+  public Integer getFrequency (final String sGram)
+  {
+    return m_aFreq.get (sGram);
+  }
+
+  public int getNWord (final int i)
+  {
+    return m_aNWords[i];
+  }
+
+  /**
+   * Add n-gram to profile
+   *
+   * @param gram
+   *        n-gram to add
+   */
+  public void add (final String gram)
+  {
+    if (m_sName == null || gram == null)
+      return; // Illegal
+
+    final int len = gram.length ();
+    if (len < 1 || len > NGram.N_GRAM)
+      return; // Illegal
+
+    ++m_aNWords[len - 1];
+    final Integer aOld = m_aFreq.get (gram);
+    if (aOld != null)
+      m_aFreq.put (gram, Integer.valueOf (aOld.intValue () + 1));
+    else
+      m_aFreq.put (gram, Integer.valueOf (1));
+  }
+
+  /**
+   * Merge two language profiles together
+   *
+   * @param other
+   *        other LangPorfile
+   */
+  public void merge (final LangProfile other)
+  {
+    if (!m_sName.equals (other.m_sName))
+      return; // Illegal
+
+    for (int i = 0; i < m_aNWords.length; i++)
+      m_aNWords[i] += other.m_aNWords[i];
+
+    for (final String key : other.m_aFreq.keySet ())
+    {
+      final Integer aMy = m_aFreq.get (key);
+      if (aMy != null)
+        m_aFreq.put (key, Integer.valueOf (aMy.intValue () + other.m_aFreq.get (key).intValue ()));
+      else
+        m_aFreq.put (key, other.m_aFreq.get (key));
     }
-    
-    /**
-     * Add n-gram to profile
-     * @param gram
-     */
-    public void add(String gram) {
-        if (name == null || gram == null) return;   // Illegal
-        int len = gram.length();
-        if (len < 1 || len > NGram.N_GRAM) return;  // Illegal
-        ++n_words[len - 1];
-        if (freq.containsKey(gram)) {
-            freq.put(gram, freq.get(gram) + 1);
-        } else {
-            freq.put(gram, 1);
+  }
+
+  /**
+   * Eliminate below less frequency n-grams and noise Latin alphabets
+   */
+  public void omitLessFreq ()
+  {
+    if (m_sName == null)
+      return; // Illegal
+
+    int threshold = m_aNWords[0] / LESS_FREQ_RATIO;
+    if (threshold < MINIMUM_FREQ)
+      threshold = MINIMUM_FREQ;
+
+    int roman = 0;
+    // Must iterate on copy!
+    for (final Map.Entry <String, Integer> aEntry : new HashSet<> (m_aFreq.entrySet ()))
+    {
+      final String key = aEntry.getKey ();
+      final int count = aEntry.getValue ().intValue ();
+      if (count <= threshold)
+      {
+        m_aNWords[key.length () - 1] -= count;
+        m_aFreq.remove (key);
+      }
+      else
+      {
+        if (key.matches ("^[A-Za-z]$"))
+        {
+          roman += count;
         }
+      }
     }
 
-    /**
-     * Merge two language profiles together
-     * @param other other LangPorfile
-     */
-    public void merge(LangProfile other){
-        if(! this.name.equals(other.name)) return; // Illegal
-        for(int i =0; i < n_words.length; i++){
-            n_words[i] += other.n_words[i];
+    // roman check
+    if (roman < m_aNWords[0] / 3)
+    {
+      // Must iterate on copy!
+      for (final Map.Entry <String, Integer> aEntry : new HashSet<> (m_aFreq.entrySet ()))
+      {
+        final String key = aEntry.getKey ();
+        if (key.matches (".*[A-Za-z].*"))
+        {
+          m_aNWords[key.length () - 1] -= aEntry.getValue ().intValue ();
+          m_aFreq.remove (key);
         }
-        Set<String> keys = other.freq.keySet();
-        for(Iterator<String> i = keys.iterator(); i.hasNext();){
-            String key = i.next();
-            if(freq.containsKey(key)){
-                freq.put(key,freq.get(key) + other.freq.get(key));
-            }else{
-                freq.put(key,other.freq.get(key));
-            }
-        }
+      }
     }
-    /**
-     * Eliminate below less frequency n-grams and noise Latin alphabets
-     */
-    public void omitLessFreq() {
-        if (name == null) return;   // Illegal
-        int threshold = n_words[0] / LESS_FREQ_RATIO;
-        if (threshold < MINIMUM_FREQ) threshold = MINIMUM_FREQ;
-        
-        Set<String> keys = freq.keySet();
-        int roman = 0;
-        for(Iterator<String> i = keys.iterator(); i.hasNext(); ){
-            String key = i.next();
-            int count = freq.get(key);
-            if (count <= threshold) {
-                n_words[key.length()-1] -= count; 
-                i.remove();
-            } else {
-                if (key.matches("^[A-Za-z]$")) {
-                    roman += count;
-                }
-            }
-        }
+  }
 
-        // roman check
-        if (roman < n_words[0] / 3) {
-            Set<String> keys2 = freq.keySet();
-            for(Iterator<String> i = keys2.iterator(); i.hasNext(); ){
-                String key = i.next();
-                if (key.matches(".*[A-Za-z].*")) {
-                    n_words[key.length()-1] -= freq.get(key); 
-                    i.remove();
-                }
-            }
-            
-        }
-    }
+  /**
+   * Update the language profile with (fragmented) text. Extract n-grams from
+   * text and add their frequency into the profile.
+   *
+   * @param sText
+   *        (fragmented) text to extract n-grams
+   */
+  public void update (final String sText)
+  {
+    if (sText == null)
+      return;
 
-    /**
-     * Update the language profile with (fragmented) text.
-     * Extract n-grams from text and add their frequency into the profile.
-     * @param text (fragmented) text to extract n-grams
-     */
-    public void update(String text) {
-        if (text == null) return;
-        text = NGram.normalize_vi(text);
-        NGram gram = new NGram();
-        for(int i=0; i<text.length(); ++i) {
-            gram.addChar(text.charAt(i));
-            for(int n=1; n<=NGram.N_GRAM; ++n) {
-                add(gram.get(n));
-            }
-        }
+    final String sNormalizedText = NGram.normalize_vi (sText);
+    final NGram gram = new NGram ();
+    for (final char c : sNormalizedText.toCharArray ())
+    {
+      gram.addChar (c);
+      for (int n = 1; n <= NGram.N_GRAM; ++n)
+        add (gram.get (n));
     }
+  }
+
+  @Nonnull
+  public static LangProfile createFromJson (final IJsonObject aJson)
+  {
+    final LangProfile ret = new LangProfile ();
+    ret.m_sName = aJson.getAsString ("name");
+    int i = 0;
+    for (final IJson aValue : aJson.getAsArray ("n_words"))
+      ret.m_aNWords[i++] = aValue.getAsValue ().getAsInt ();
+    for (final Map.Entry <String, IJson> aEntry : aJson.getAsObject ("freq"))
+      ret.m_aFreq.put (aEntry.getKey (), Integer.valueOf (aEntry.getValue ().getAsValue ().getAsInt ()));
+    return ret;
+  }
 }

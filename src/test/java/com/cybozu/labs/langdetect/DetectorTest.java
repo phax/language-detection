@@ -32,17 +32,17 @@ public class DetectorTest
 
     final LangProfile profile_en = new LangProfile ("en");
     for (final String w : TRAINING_EN.split (" "))
-      profile_en.add (w);
+      profile_en.addNGram (w);
     DetectorFactory.addProfile (profile_en, 0, 3);
 
     final LangProfile profile_fr = new LangProfile ("fr");
     for (final String w : TRAINING_FR.split (" "))
-      profile_fr.add (w);
+      profile_fr.addNGram (w);
     DetectorFactory.addProfile (profile_fr, 1, 3);
 
     final LangProfile profile_ja = new LangProfile ("ja");
     for (final String w : TRAINING_JA.split (" "))
-      profile_ja.add (w);
+      profile_ja.addNGram (w);
     DetectorFactory.addProfile (profile_ja, 2, 3);
   }
 

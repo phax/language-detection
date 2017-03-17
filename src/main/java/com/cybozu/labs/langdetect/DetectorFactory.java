@@ -7,7 +7,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+
 import com.cybozu.labs.langdetect.util.LangProfile;
+import com.cybozu.labs.langdetect.util.NGram;
 import com.helger.json.IJson;
 import com.helger.json.serialize.JsonReader;
 
@@ -34,7 +37,7 @@ public class DetectorFactory
   private DetectorFactory ()
   {}
 
-  private static DetectorFactory instance_ = new DetectorFactory ();
+  private static DetectorFactory s_aInstance = new DetectorFactory ();
 
   Map <String, double []> getWordLangProbMap ()
   {
@@ -129,29 +132,32 @@ public class DetectorFactory
   }
 
   /**
-   * @param profile
-   * @param langsize
-   * @param index
+   * @param aProfile
+   * @param nLangsize
+   * @param nIndex
    * @throws LangDetectException
    */
-  static void addProfile (final LangProfile profile, final int index, final int langsize) throws LangDetectException
+  static void addProfile (@Nonnull final LangProfile aProfile,
+                          final int nIndex,
+                          final int nLangsize) throws LangDetectException
   {
-    final String lang = profile.getName ();
-    if (instance_.m_aLanglist.contains (lang))
+    final String sLang = aProfile.getName ();
+    if (sLang == null)
+      throw new LangDetectException (ELangDetectErrorCode.FormatError, "no language present");
+
+    if (s_aInstance.m_aLanglist.contains (sLang))
       throw new LangDetectException (ELangDetectErrorCode.DuplicateLangError, "duplicate the same language profile");
 
-    instance_.m_aLanglist.add (lang);
-    for (final String word : profile.getAllGrams ())
+    s_aInstance.m_aLanglist.add (sLang);
+    for (final String word : aProfile.getAllGrams ())
     {
-      if (!instance_.m_aWordLangProbMap.containsKey (word))
+      final int nLength = word.length ();
+      if (nLength >= 1 && nLength <= NGram.N_GRAM)
       {
-        instance_.m_aWordLangProbMap.put (word, new double [langsize]);
-      }
-      final int length = word.length ();
-      if (length >= 1 && length <= 3)
-      {
-        final double prob = profile.getFrequency (word).doubleValue () / profile.getNWord (length - 1);
-        instance_.m_aWordLangProbMap.get (word)[index] = prob;
+        final double prob = (double) aProfile.getFrequency (word) / aProfile.getNWord (nLength - 1);
+
+        final double [] aLangProb = s_aInstance.m_aWordLangProbMap.computeIfAbsent (word, k -> new double [nLangsize]);
+        aLangProb[nIndex] = prob;
       }
     }
   }
@@ -161,8 +167,8 @@ public class DetectorFactory
    */
   static public void clear ()
   {
-    instance_.m_aLanglist.clear ();
-    instance_.m_aWordLangProbMap.clear ();
+    s_aInstance.m_aLanglist.clear ();
+    s_aInstance.m_aWordLangProbMap.clear ();
   }
 
   /**
@@ -195,19 +201,19 @@ public class DetectorFactory
 
   private static Detector _createDetector () throws LangDetectException
   {
-    if (instance_.m_aLanglist.isEmpty ())
+    if (s_aInstance.m_aLanglist.isEmpty ())
       throw new LangDetectException (ELangDetectErrorCode.NeedLoadProfileError, "need to load profiles");
-    final Detector detector = new Detector (instance_);
+    final Detector detector = new Detector (s_aInstance);
     return detector;
   }
 
   public static void setSeed (final long seed)
   {
-    instance_.m_aSeed = Long.valueOf (seed);
+    s_aInstance.m_aSeed = Long.valueOf (seed);
   }
 
   public static final List <String> getLangList ()
   {
-    return Collections.unmodifiableList (instance_.m_aLanglist);
+    return Collections.unmodifiableList (s_aInstance.m_aLanglist);
   }
 }

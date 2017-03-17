@@ -6,7 +6,12 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
+import com.helger.commons.ValueEnforcer;
+import com.helger.commons.annotation.Nonempty;
+import com.helger.commons.mutable.MutableInt;
+import com.helger.commons.regex.RegExHelper;
 import com.helger.json.IJson;
 import com.helger.json.IJsonObject;
 import com.helger.json.JsonArray;
@@ -23,15 +28,9 @@ public class LangProfile
   private static final int MINIMUM_FREQ = 2;
   private static final int LESS_FREQ_RATIO = 100000;
 
-  String m_sName;
-  final Map <String, Integer> m_aFreq = new HashMap<> ();
-  final int [] m_aNWords = new int [NGram.N_GRAM];
-
-  /**
-   * Constructor for JSONIC
-   */
-  public LangProfile ()
-  {}
+  private final String m_sName;
+  private final Map <String, MutableInt> m_aFreq = new HashMap<> ();
+  private final int [] m_aNWords = new int [NGram.N_GRAM];
 
   /**
    * Normal Constructor
@@ -39,24 +38,34 @@ public class LangProfile
    * @param sName
    *        language name
    */
-  public LangProfile (final String sName)
+  public LangProfile (@Nonnull @Nonempty final String sName)
   {
+    ValueEnforcer.notEmpty (sName, "Name");
     m_sName = sName;
   }
 
+  @Nonnull
+  @Nonempty
   public String getName ()
   {
     return m_sName;
   }
 
+  @Nonnull
   public Set <String> getAllGrams ()
   {
     return m_aFreq.keySet ();
   }
 
-  public Integer getFrequency (final String sGram)
+  @Nullable
+  public MutableInt getFrequencyObj (final String sGram)
   {
     return m_aFreq.get (sGram);
+  }
+
+  public int getFrequency (final String sGram)
+  {
+    return getFrequencyObj (sGram).intValue ();
   }
 
   public int getNWord (final int i)
@@ -70,21 +79,16 @@ public class LangProfile
    * @param gram
    *        n-gram to add
    */
-  public void add (final String gram)
+  public void addNGram (@Nonnull @Nonempty final String gram)
   {
-    if (m_sName == null || gram == null)
-      return; // Illegal
+    ValueEnforcer.notEmpty (gram, "Gram");
 
     final int len = gram.length ();
-    if (len < 1 || len > NGram.N_GRAM)
-      return; // Illegal
+    if (len > NGram.N_GRAM)
+      throw new IllegalArgumentException ("Maximum gram length is " + NGram.N_GRAM);
 
-    ++m_aNWords[len - 1];
-    final Integer aOld = m_aFreq.get (gram);
-    if (aOld != null)
-      m_aFreq.put (gram, Integer.valueOf (aOld.intValue () + 1));
-    else
-      m_aFreq.put (gram, Integer.valueOf (1));
+    m_aNWords[len - 1]++;
+    m_aFreq.computeIfAbsent (gram, k -> new MutableInt (0)).inc ();
   }
 
   /**
@@ -93,21 +97,23 @@ public class LangProfile
    * @param other
    *        other LangPorfile
    */
-  public void merge (final LangProfile other)
+  public void merge (@Nonnull final LangProfile other)
   {
     if (!m_sName.equals (other.m_sName))
-      return; // Illegal
+      throw new IllegalStateException ("Cannot merge " + m_sName + " with " + other.getName ());
 
     for (int i = 0; i < m_aNWords.length; i++)
       m_aNWords[i] += other.m_aNWords[i];
 
-    for (final String key : other.m_aFreq.keySet ())
+    for (final Map.Entry <String, MutableInt> aEntry : other.m_aFreq.entrySet ())
     {
-      final Integer aMy = m_aFreq.get (key);
+      final String key = aEntry.getKey ();
+      final MutableInt aOtherCount = aEntry.getValue ();
+      final MutableInt aMy = m_aFreq.get (key);
       if (aMy != null)
-        m_aFreq.put (key, Integer.valueOf (aMy.intValue () + other.m_aFreq.get (key).intValue ()));
+        aMy.inc (aOtherCount);
       else
-        m_aFreq.put (key, other.m_aFreq.get (key));
+        m_aFreq.put (key, aOtherCount);
     }
   }
 
@@ -116,44 +122,41 @@ public class LangProfile
    */
   public void omitLessFreq ()
   {
-    if (m_sName == null)
-      return; // Illegal
+    int nThreshold = m_aNWords[0] / LESS_FREQ_RATIO;
+    if (nThreshold < MINIMUM_FREQ)
+      nThreshold = MINIMUM_FREQ;
 
-    int threshold = m_aNWords[0] / LESS_FREQ_RATIO;
-    if (threshold < MINIMUM_FREQ)
-      threshold = MINIMUM_FREQ;
-
-    int roman = 0;
+    int nRoman = 0;
     // Must iterate on copy!
-    for (final Map.Entry <String, Integer> aEntry : new HashSet<> (m_aFreq.entrySet ()))
+    for (final Map.Entry <String, MutableInt> aEntry : new HashSet<> (m_aFreq.entrySet ()))
     {
-      final String key = aEntry.getKey ();
-      final int count = aEntry.getValue ().intValue ();
-      if (count <= threshold)
+      final String sKey = aEntry.getKey ();
+      final int nCount = aEntry.getValue ().intValue ();
+      if (nCount <= nThreshold)
       {
-        m_aNWords[key.length () - 1] -= count;
-        m_aFreq.remove (key);
+        m_aNWords[sKey.length () - 1] -= nCount;
+        m_aFreq.remove (sKey);
       }
       else
       {
-        if (key.matches ("^[A-Za-z]$"))
+        if (RegExHelper.stringMatchesPattern ("^[A-Za-z]$", sKey))
         {
-          roman += count;
+          nRoman += nCount;
         }
       }
     }
 
     // roman check
-    if (roman < m_aNWords[0] / 3)
+    if (nRoman < m_aNWords[0] / 3)
     {
       // Must iterate on copy!
-      for (final Map.Entry <String, Integer> aEntry : new HashSet<> (m_aFreq.entrySet ()))
+      for (final Map.Entry <String, MutableInt> aEntry : new HashSet<> (m_aFreq.entrySet ()))
       {
-        final String key = aEntry.getKey ();
-        if (key.matches (".*[A-Za-z].*"))
+        final String sKey = aEntry.getKey ();
+        if (RegExHelper.stringMatchesPattern (".*[A-Za-z].*", sKey))
         {
-          m_aNWords[key.length () - 1] -= aEntry.getValue ().intValue ();
-          m_aFreq.remove (key);
+          m_aNWords[sKey.length () - 1] -= aEntry.getValue ().intValue ();
+          m_aFreq.remove (sKey);
         }
       }
     }
@@ -166,31 +169,34 @@ public class LangProfile
    * @param sText
    *        (fragmented) text to extract n-grams
    */
-  public void update (final String sText)
+  public void update (@Nullable final String sText)
   {
     if (sText == null)
       return;
 
     final String sNormalizedText = NGram.normalize_vi (sText);
-    final NGram gram = new NGram ();
+    final NGram aNGram = new NGram ();
     for (final char c : sNormalizedText.toCharArray ())
     {
-      gram.addChar (c);
+      aNGram.addChar (c);
       for (int n = 1; n <= NGram.N_GRAM; ++n)
-        add (gram.get (n));
+      {
+        final String sGram = aNGram.get (n);
+        if (sGram != null)
+          addNGram (sGram);
+      }
     }
   }
 
   @Nonnull
   public static LangProfile createFromJson (@Nonnull final IJsonObject aJson)
   {
-    final LangProfile ret = new LangProfile ();
-    ret.m_sName = aJson.getAsString ("name");
+    final LangProfile ret = new LangProfile (aJson.getAsString ("name"));
     int i = 0;
     for (final IJson aValue : aJson.getAsArray ("n_words"))
       ret.m_aNWords[i++] = aValue.getAsValue ().getAsInt ();
     for (final Map.Entry <String, IJson> aEntry : aJson.getAsObject ("freq"))
-      ret.m_aFreq.put (aEntry.getKey (), Integer.valueOf (aEntry.getValue ().getAsValue ().getAsInt ()));
+      ret.m_aFreq.put (aEntry.getKey (), new MutableInt (aEntry.getValue ().getAsValue ().getAsInt ()));
     return ret;
   }
 

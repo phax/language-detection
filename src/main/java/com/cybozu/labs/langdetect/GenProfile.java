@@ -1,6 +1,5 @@
 package com.cybozu.labs.langdetect;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -9,6 +8,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 
+import javax.annotation.Nonnull;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -29,7 +29,8 @@ public class GenProfile
   private GenProfile ()
   {}
 
-  private static InputStream _getIS (final File file) throws IOException
+  @Nonnull
+  private static InputStream _getIS (@Nonnull final File file) throws IOException
   {
     InputStream is = new FileInputStream (file);
     if (file.getName ().endsWith (".gz"))
@@ -52,9 +53,9 @@ public class GenProfile
   {
     final LangProfile profile = new LangProfile (lang);
 
-    try (final BufferedReader br = new BufferedReader (new InputStreamReader (_getIS (file), StandardCharsets.UTF_8)))
+    try (final NonBlockingBufferedReader br = new NonBlockingBufferedReader (new InputStreamReader (_getIS (file),
+                                                                                                    StandardCharsets.UTF_8)))
     {
-
       final TagExtractor tagextractor = new TagExtractor ("abstract", 100);
 
       XMLStreamReader reader = null;

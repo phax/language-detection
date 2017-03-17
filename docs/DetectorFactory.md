@@ -1,1 +1,0 @@
-http://language-detection.googlecode.com/svn/trunk/doc/com/cybozu/labs/langdetect/DetectorFactory.html

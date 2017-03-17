@@ -34,3 +34,4 @@ See [Tools](Tools.md) about Other commands of langdetect.jar.
 # Tutorial #
 
   * [Tutorial](Tutorial.md)
+  

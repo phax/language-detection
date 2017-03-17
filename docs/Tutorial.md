@@ -66,7 +66,7 @@ The list is in order of probability.
 Detector detector = DetectorFactory.create();
 detector.append(text);
 
-ArrayList<Language> langlist = detector.getProbabilities();
+List<Language> langlist = detector.getProbabilities();
 ```
 
 

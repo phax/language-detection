@@ -1,7 +1,7 @@
 This is a language detection library implemented in plain Java.
 (aliases: language identification, language guessing)
 
-  * Presentation : http://www.slideshare.net/shuyo/language-detection-library-for-java
+  * Presentation : http://www.slideshare.net/shuyo/language-detection-library-for-java or locally at languagedetection-101203030754-phpapp01.pdf
   * ProjectHomeJa : Project Home in Japanese
 
 # Abstract #
@@ -40,7 +40,6 @@ This is a language detection library implemented in plain Java.
 # Requires #
 
   * Java 1.6 or later
-  * JSONIC (bundled) < http://sourceforge.jp/projects/jsonic/devel/ , Apache License 2.0 >
 
 # Documents #
 

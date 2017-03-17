@@ -77,18 +77,18 @@ public class Detector
   private static final Pattern URL_REGEX = Pattern.compile ("https?://[-_.?&~;+=/#0-9A-Za-z]{1,2076}");
   private static final Pattern MAIL_REGEX = Pattern.compile ("[-_.0-9A-Za-z]{1,64}@[-_0-9A-Za-z]{1,255}[-_.0-9A-Za-z]{1,255}");
 
-  private final Map <String, double []> wordLangProbMap;
-  private final List <String> langlist;
+  private final Map <String, double []> m_aWordLangProbMap;
+  private final List <String> m_aLanglist;
 
-  private StringBuffer text;
-  private double [] langprob = null;
+  private StringBuilder m_aText = new StringBuilder ();
+  private double [] m_aLangProb;
 
   private double m_dAlpha = ALPHA_DEFAULT;
-  private int m_nN_trial = 7;
-  private int max_text_length = 10000;
-  private double [] priorMap = null;
-  private boolean verbose = false;
-  private Long seed = null;
+  private int m_nNTrial = 7;
+  private int m_nMaxTextLength = 10000;
+  private double [] m_aPriorMap;
+  private boolean m_bVerbose = false;
+  private final Long m_aSeed;
 
   /**
    * Constructor. Detector instance can be constructed via
@@ -99,10 +99,9 @@ public class Detector
    */
   public Detector (final DetectorFactory factory)
   {
-    this.wordLangProbMap = factory.wordLangProbMap;
-    this.langlist = factory.langlist;
-    this.text = new StringBuffer ();
-    this.seed = factory.seed;
+    m_aWordLangProbMap = factory.wordLangProbMap;
+    m_aLanglist = factory.langlist;
+    m_aSeed = factory.seed;
   }
 
   /**
@@ -110,7 +109,7 @@ public class Detector
    */
   public void setVerbose ()
   {
-    this.verbose = true;
+    m_bVerbose = true;
   }
 
   /**
@@ -122,7 +121,7 @@ public class Detector
    */
   public void setAlpha (final double alpha)
   {
-    this.m_dAlpha = alpha;
+    m_dAlpha = alpha;
   }
 
   /**
@@ -133,7 +132,7 @@ public class Detector
    */
   public void setTrials (final int n_trial)
   {
-    this.m_nN_trial = n_trial;
+    m_nNTrial = n_trial;
   }
 
   /**
@@ -146,26 +145,27 @@ public class Detector
    */
   public void setPriorMap (final Map <String, Double> priorMap) throws LangDetectException
   {
-    this.priorMap = new double [langlist.size ()];
+    m_aPriorMap = new double [m_aLanglist.size ()];
     double sump = 0;
-    for (int i = 0; i < this.priorMap.length; ++i)
+    for (int i = 0; i < m_aPriorMap.length; ++i)
     {
-      final String lang = langlist.get (i);
-      if (priorMap.containsKey (lang))
+      final String lang = m_aLanglist.get (i);
+      final Double aP = priorMap.get (lang);
+      if (aP != null)
       {
-        final double p = priorMap.get (lang);
+        final double p = aP.doubleValue ();
         if (p < 0)
           throw new LangDetectException (ELangDetectErrorCode.InitParamError,
                                          "Prior probability must be non-negative.");
-        this.priorMap[i] = p;
+        m_aPriorMap[i] = p;
         sump += p;
       }
     }
     if (sump <= 0)
       throw new LangDetectException (ELangDetectErrorCode.InitParamError,
                                      "More one of prior probability must be non-zero.");
-    for (int i = 0; i < this.priorMap.length; ++i)
-      this.priorMap[i] /= sump;
+    for (int i = 0; i < m_aPriorMap.length; ++i)
+      m_aPriorMap[i] /= sump;
   }
 
   /**
@@ -177,7 +177,7 @@ public class Detector
    */
   public void setMaxTextLength (final int max_text_length)
   {
-    this.max_text_length = max_text_length;
+    m_nMaxTextLength = max_text_length;
   }
 
   /**
@@ -193,8 +193,8 @@ public class Detector
    */
   public void append (final Reader reader) throws IOException
   {
-    final char [] buf = new char [max_text_length / 2];
-    while (text.length () < max_text_length && reader.ready ())
+    final char [] buf = new char [m_nMaxTextLength / 2];
+    while (m_aText.length () < m_nMaxTextLength && reader.ready ())
     {
       final int length = reader.read (buf);
       append (new String (buf, 0, length));
@@ -206,20 +206,20 @@ public class Detector
    * text exceeds the limit size specified by
    * {@link Detector#setMaxTextLength(int)}, the rest is cut down.
    *
-   * @param text
+   * @param sText
    *        the target text to append
    */
-  public void append (String text)
+  public void append (final String sText)
   {
-    text = URL_REGEX.matcher (text).replaceAll (" ");
+    String text = URL_REGEX.matcher (sText).replaceAll (" ");
     text = MAIL_REGEX.matcher (text).replaceAll (" ");
     text = NGram.normalize_vi (text);
     char pre = 0;
-    for (int i = 0; i < text.length () && i < max_text_length; ++i)
+    for (int i = 0; i < text.length () && i < m_nMaxTextLength; ++i)
     {
       final char c = text.charAt (i);
       if (c != ' ' || pre != ' ')
-        this.text.append (c);
+        m_aText.append (c);
       pre = c;
     }
   }
@@ -231,9 +231,9 @@ public class Detector
   private void _cleaningText ()
   {
     int latinCount = 0, nonLatinCount = 0;
-    for (int i = 0; i < text.length (); ++i)
+    for (int i = 0; i < m_aText.length (); ++i)
     {
-      final char c = text.charAt (i);
+      final char c = m_aText.charAt (i);
       if (c <= 'z' && c >= 'A')
       {
         ++latinCount;
@@ -246,14 +246,14 @@ public class Detector
     }
     if (latinCount * 2 < nonLatinCount)
     {
-      final StringBuffer textWithoutLatin = new StringBuffer ();
-      for (int i = 0; i < text.length (); ++i)
+      final StringBuilder textWithoutLatin = new StringBuilder ();
+      for (int i = 0; i < m_aText.length (); ++i)
       {
-        final char c = text.charAt (i);
+        final char c = m_aText.charAt (i);
         if (c > 'z' || c < 'A')
           textWithoutLatin.append (c);
       }
-      text = textWithoutLatin;
+      m_aText = textWithoutLatin;
     }
 
   }
@@ -286,10 +286,10 @@ public class Detector
    */
   public List <Language> getProbabilities () throws LangDetectException
   {
-    if (langprob == null)
+    if (m_aLangProb == null)
       _detectBlock ();
 
-    final List <Language> list = _sortProbability (langprob);
+    final List <Language> list = _sortProbability (m_aLangProb);
     return list;
   }
 
@@ -303,15 +303,15 @@ public class Detector
     if (ngrams.size () == 0)
       throw new LangDetectException (ELangDetectErrorCode.CantDetectError, "no features in text");
 
-    langprob = new double [langlist.size ()];
+    m_aLangProb = new double [m_aLanglist.size ()];
 
     final Random rand = new Random ();
-    if (seed != null)
-      rand.setSeed (seed);
-    for (int t = 0; t < m_nN_trial; ++t)
+    if (m_aSeed != null)
+      rand.setSeed (m_aSeed.longValue ());
+    for (int t = 0; t < m_nNTrial; ++t)
     {
       final double [] prob = _initProbability ();
-      final double alpha = this.m_dAlpha + rand.nextGaussian () * ALPHA_WIDTH;
+      final double alpha = m_dAlpha + rand.nextGaussian () * ALPHA_WIDTH;
 
       for (int i = 0;; ++i)
       {
@@ -321,13 +321,13 @@ public class Detector
         {
           if (_normalizeProb (prob) > CONV_THRESHOLD || i >= ITERATION_LIMIT)
             break;
-          if (verbose)
+          if (m_bVerbose)
             System.out.println ("> " + _sortProbability (prob));
         }
       }
-      for (int j = 0; j < langprob.length; ++j)
-        langprob[j] += prob[j] / m_nN_trial;
-      if (verbose)
+      for (int j = 0; j < m_aLangProb.length; ++j)
+        m_aLangProb[j] += prob[j] / m_nNTrial;
+      if (m_bVerbose)
         System.out.println ("==> " + _sortProbability (prob));
     }
   }
@@ -340,16 +340,16 @@ public class Detector
    */
   private double [] _initProbability ()
   {
-    final double [] prob = new double [langlist.size ()];
-    if (priorMap != null)
+    final double [] prob = new double [m_aLanglist.size ()];
+    if (m_aPriorMap != null)
     {
       for (int i = 0; i < prob.length; ++i)
-        prob[i] = priorMap[i];
+        prob[i] = m_aPriorMap[i];
     }
     else
     {
       for (int i = 0; i < prob.length; ++i)
-        prob[i] = 1.0 / langlist.size ();
+        prob[i] = 1.0 / m_aLanglist.size ();
     }
     return prob;
   }
@@ -363,13 +363,13 @@ public class Detector
   {
     final List <String> list = new ArrayList<> ();
     final NGram ngram = new NGram ();
-    for (int i = 0; i < text.length (); ++i)
+    for (int i = 0; i < m_aText.length (); ++i)
     {
-      ngram.addChar (text.charAt (i));
+      ngram.addChar (m_aText.charAt (i));
       for (int n = 1; n <= NGram.N_GRAM; ++n)
       {
         final String w = ngram.get (n);
-        if (w != null && wordLangProbMap.containsKey (w))
+        if (w != null && m_aWordLangProbMap.containsKey (w))
           list.add (w);
       }
     }
@@ -384,11 +384,11 @@ public class Detector
    */
   private boolean _updateLangProb (final double [] prob, final String word, final double alpha)
   {
-    if (word == null || !wordLangProbMap.containsKey (word))
+    if (word == null || !m_aWordLangProbMap.containsKey (word))
       return false;
 
-    final double [] langProbMap = wordLangProbMap.get (word);
-    if (verbose)
+    final double [] langProbMap = m_aWordLangProbMap.get (word);
+    if (m_bVerbose)
       System.out.println (word + "(" + _unicodeEncode (word) + "):" + _wordProbToString (langProbMap));
 
     final double weight = alpha / BASE_FREQ;
@@ -407,7 +407,7 @@ public class Detector
       {
         final double p = prob[j];
         if (p >= 0.00001)
-          formatter.format (" %s:%.5f", langlist.get (j), p);
+          formatter.format (" %s:%.5f", m_aLanglist.get (j), Double.valueOf (p));
       }
       return formatter.toString ();
     }
@@ -450,7 +450,7 @@ public class Detector
         {
           if (i == list.size () || list.get (i).getProbability () < p)
           {
-            list.add (i, new Language (langlist.get (j), p));
+            list.add (i, new Language (m_aLanglist.get (j), p));
             break;
           }
         }

@@ -83,7 +83,7 @@ public class DetectorTest
   }
 
   @Test
-  public final void testLangList () throws LangDetectException
+  public final void testLangList ()
   {
     final List <String> langList = DetectorFactory.getLangList ();
     assertEquals (langList.size (), 3);
@@ -93,7 +93,7 @@ public class DetectorTest
   }
 
   @Test (expected = UnsupportedOperationException.class)
-  public final void testLangListException () throws LangDetectException
+  public final void testLangListException ()
   {
     final List <String> langList = DetectorFactory.getLangList ();
     langList.add ("hoge");

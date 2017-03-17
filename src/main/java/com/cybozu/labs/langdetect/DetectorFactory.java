@@ -92,8 +92,8 @@ public class DetectorFactory
    * Load profiles from specified directory. This method must be called once
    * before language detection.
    *
-   * @param profileDirectory
-   *        profile directory path
+   * @param json_profiles
+   *        profile string list
    * @throws LangDetectException
    *         Can't open profiles(error code =
    *         {@link ELangDetectErrorCode#FileLoadError}) or profile's format is
@@ -193,7 +193,7 @@ public class DetectorFactory
 
   public static void setSeed (final long seed)
   {
-    instance_.seed = seed;
+    instance_.seed = Long.valueOf (seed);
   }
 
   public static final List <String> getLangList ()

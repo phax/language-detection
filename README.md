@@ -1,9 +1,9 @@
 # language-detection
-[![Build Status](https://travis-ci.org/kirasystems/language-detection.svg?branch=master)](https://travis-ci.org/kirasystems/aging-session)
+[![Build Status](https://travis-ci.org/phax/language-detection.svg?branch=master)](https://travis-ci.org/phax/language-detection)
 
-This is a language detection library implemented in plain Java. (aliases: language identification, language guessing)
+This is a language detection library implemented in plain Java (aliases: language identification, language guessing). Forked from https://github.com/kirasystems/language-detection which in turn is a fork from https://github.com/shuyo/language-detection
 
-[![Clojars Project](http://clojars.org/kirasystems/langdetect/latest-version.svg)](http://clojars.org/kirasystems/langdetect)
+This version uses a Maven POM to build and contains some speed and coding styleguide improvements.
 
 ## New CLI options (January 2017)
 `-u <text>` will cause the profile being learned to be added to an existing profile (should one exist). Useful for incrementally building language profiles without requiring a giant text file.

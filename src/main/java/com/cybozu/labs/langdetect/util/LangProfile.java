@@ -9,6 +9,8 @@ import javax.annotation.Nonnull;
 
 import com.helger.json.IJson;
 import com.helger.json.IJsonObject;
+import com.helger.json.JsonArray;
+import com.helger.json.JsonObject;
 
 /**
  * {@link LangProfile} is a Language Profile Class. Users don't use this class
@@ -180,7 +182,7 @@ public class LangProfile
   }
 
   @Nonnull
-  public static LangProfile createFromJson (final IJsonObject aJson)
+  public static LangProfile createFromJson (@Nonnull final IJsonObject aJson)
   {
     final LangProfile ret = new LangProfile ();
     ret.m_sName = aJson.getAsString ("name");
@@ -189,6 +191,16 @@ public class LangProfile
       ret.m_aNWords[i++] = aValue.getAsValue ().getAsInt ();
     for (final Map.Entry <String, IJson> aEntry : aJson.getAsObject ("freq"))
       ret.m_aFreq.put (aEntry.getKey (), Integer.valueOf (aEntry.getValue ().getAsValue ().getAsInt ()));
+    return ret;
+  }
+
+  @Nonnull
+  public IJsonObject getAsJson ()
+  {
+    final IJsonObject ret = new JsonObject ();
+    ret.add ("name", m_sName);
+    ret.add ("n_words", new JsonArray ().addAll (m_aNWords));
+    ret.add ("freq", new JsonObject (m_aFreq.size ()).addAll (m_aFreq));
     return ret;
   }
 }

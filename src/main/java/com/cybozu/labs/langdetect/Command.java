@@ -3,7 +3,6 @@ package com.cybozu.labs.langdetect;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -16,14 +15,16 @@ import java.util.Map;
 import java.util.Set;
 
 import com.cybozu.labs.langdetect.util.LangProfile;
-
-import net.arnx.jsonic.JSON;
-import net.arnx.jsonic.JSONException;
+import com.helger.commons.io.EAppend;
+import com.helger.commons.io.file.FileHelper;
+import com.helger.json.IJson;
+import com.helger.json.serialize.JsonReader;
+import com.helger.json.serialize.JsonWriter;
 
 /**
  * LangDetect Command Line Interface
  * <p>
- * This is a command line interface of Language Detection Library "LandDetect".
+ * This is a command line interface of Language Detection Library "LangDetect".
  *
  * @author Nakatani Shuyo
  */
@@ -141,7 +142,7 @@ public class Command
       DetectorFactory.loadProfile (profileDirectory);
       final Long seed = _getLong ("seed");
       if (seed != null)
-        DetectorFactory.setSeed (seed);
+        DetectorFactory.setSeed (seed.longValue ());
       return false;
     }
     catch (final LangDetectException e)
@@ -175,16 +176,12 @@ public class Command
         final LangProfile profile = GenProfile.loadFromWikipediaAbstract (lang, file);
         if (_getString ("update") != null)
         {
-          try
-          {
-            final FileInputStream is = new FileInputStream (file);
-            final LangProfile old_profile = JSON.decode (is, LangProfile.class);
-            profile.merge (old_profile);
-          }
-          catch (final JSONException | IOException e)
-          {
-            e.printStackTrace ();
-          }
+          final IJson aJson = JsonReader.readFromFile (file);
+          if (aJson == null || !aJson.isObject ())
+            throw new LangDetectException (ELangDetectErrorCode.FileLoadError, "Failed to parse JSON from " + file);
+
+          final LangProfile old_profile = LangProfile.createFromJson (aJson.getAsObject ());
+          profile.merge (old_profile);
         }
         else
         {
@@ -192,12 +189,12 @@ public class Command
         }
 
         final File profile_path = new File (_getString ("directory") + "/profiles/" + lang);
-        try (FileOutputStream os = new FileOutputStream (profile_path))
-        {
-          JSON.encode (profile, os);
-        }
+        new JsonWriter ().writeToWriter (profile.getAsJson (),
+                                         FileHelper.getBufferedWriter (profile_path,
+                                                                       EAppend.TRUNCATE,
+                                                                       StandardCharsets.UTF_8));
       }
-      catch (final JSONException | IOException | LangDetectException e)
+      catch (final IOException | LangDetectException e)
       {
         e.printStackTrace ();
       }
@@ -238,27 +235,25 @@ public class Command
       final File profile_path = new File (lang);
       if (_getString ("update") != null)
       {
-        try (final FileInputStream is = new FileInputStream (profile_path))
-        {
-          final LangProfile old_profile = JSON.decode (is, LangProfile.class);
-          profile.merge (old_profile);
-        }
-        catch (final JSONException | IOException e)
-        {
-          e.printStackTrace ();
-        }
+        final IJson aJson = JsonReader.readFromFile (profile_path);
+        if (aJson == null || !aJson.isObject ())
+          throw new LangDetectException (ELangDetectErrorCode.FileLoadError,
+                                         "Failed to parse JSON from " + profile_path);
+
+        final LangProfile old_profile = LangProfile.createFromJson (aJson.getAsObject ());
+        profile.merge (old_profile);
       }
       else
       {
         profile.omitLessFreq ();
       }
 
-      try (FileOutputStream os = new FileOutputStream (profile_path))
-      {
-        JSON.encode (profile, os);
-      }
+      new JsonWriter ().writeToWriter (profile.getAsJson (),
+                                       FileHelper.getBufferedWriter (profile_path,
+                                                                     EAppend.TRUNCATE,
+                                                                     StandardCharsets.UTF_8));
     }
-    catch (final JSONException | IOException | LangDetectException e)
+    catch (final IOException | LangDetectException e)
     {
       e.printStackTrace ();
     }
@@ -282,17 +277,19 @@ public class Command
     try
     {
       final File profile_path = new File (arglist.get (0));
-      try (FileInputStream is = new FileInputStream (profile_path))
-      {
-        final LangProfile profile = JSON.decode (is, LangProfile.class);
-        profile.omitLessFreq ();
-        try (FileOutputStream os = new FileOutputStream (profile_path))
-        {
-          JSON.encode (profile, os);
-        }
-      }
+      final IJson aJson = JsonReader.readFromFile (profile_path);
+      if (aJson == null || !aJson.isObject ())
+        throw new LangDetectException (ELangDetectErrorCode.FileLoadError, "Failed to parse JSON from " + profile_path);
+
+      final LangProfile profile = LangProfile.createFromJson (aJson.getAsObject ());
+      profile.omitLessFreq ();
+
+      new JsonWriter ().writeToWriter (profile.getAsJson (),
+                                       FileHelper.getBufferedWriter (profile_path,
+                                                                     EAppend.TRUNCATE,
+                                                                     StandardCharsets.UTF_8));
     }
-    catch (final JSONException | IOException e)
+    catch (final IOException | LangDetectException e)
     {
       e.printStackTrace ();
     }
@@ -399,25 +396,36 @@ public class Command
         for (final String detectedLang : list)
         {
           ++count;
-          if (resultCount.containsKey (detectedLang))
+          final Integer aOld = resultCount.get (detectedLang);
+          if (aOld != null)
           {
-            resultCount.put (detectedLang, resultCount.get (detectedLang) + 1);
+            resultCount.put (detectedLang, Integer.valueOf (aOld.intValue () + 1));
           }
           else
           {
-            resultCount.put (detectedLang, 1);
+            resultCount.put (detectedLang, Integer.valueOf (1));
           }
         }
-        final int correct = resultCount.containsKey (lang) ? resultCount.get (lang) : 0;
+        final Integer aCorrect = resultCount.get (lang);
+        final int correct = aCorrect != null ? aCorrect.intValue () : 0;
         final double rate = correct / (double) count;
-        System.out.println (String.format ("%s (%d/%d=%.2f): %s", lang, correct, count, rate, resultCount));
+        System.out.println (String.format (lang +
+                                           " (" +
+                                           correct +
+                                           "/" +
+                                           count +
+                                           "=%.2f): " +
+                                           resultCount,
+                                           Double.valueOf (rate)));
         totalCorrect += correct;
         totalCount += count;
       }
-      System.out.println (String.format ("total: %d/%d = %.3f",
-                                         totalCorrect,
-                                         totalCount,
-                                         totalCorrect / (double) totalCount));
+      System.out.println (String.format ("total: " +
+                                         totalCorrect +
+                                         "/" +
+                                         totalCount +
+                                         " = %.3f",
+                                         Double.valueOf (totalCorrect / (double) totalCount)));
     }
   }
 

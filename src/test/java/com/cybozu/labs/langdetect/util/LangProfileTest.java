@@ -101,6 +101,9 @@ public class LangProfileTest
     assertEquals (profile.m_aFreq.get ("a"), null); // omitted
     assertEquals (profile.m_aFreq.get ("\u3042").intValue (), 5);
     assertEquals (profile.m_aFreq.get ("\u3050"), null); // omitted
+
+    final String s = profile.getAsJson ().getAsJsonString ();
+    assertEquals (s, LangProfile.createFromJson (profile.getAsJson ()).getAsJson ().getAsJsonString ());
   }
 
   /**

@@ -91,6 +91,11 @@ public final class LangIdV3 implements ILangIdClassifier
                                             .onUnmappableCharacter (CodingErrorAction.IGNORE);
   }
 
+  public Model getModel ()
+  {
+    return m_aModel;
+  }
+
   /*
    *
    */

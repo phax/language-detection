@@ -20,12 +20,12 @@ public class TagExtractorTest
   public final void testTagExtractor ()
   {
     final TagExtractor extractor = new TagExtractor (null, 0);
-    assertEquals (extractor.target_, null);
-    assertEquals (extractor.threshold_, 0);
+    assertEquals (extractor.getTarget (), null);
+    assertEquals (extractor.getThreshold (), 0);
 
     final TagExtractor extractor2 = new TagExtractor ("abstract", 10);
-    assertEquals (extractor2.target_, "abstract");
-    assertEquals (extractor2.threshold_, 10);
+    assertEquals (extractor2.getTarget (), "abstract");
+    assertEquals (extractor2.getThreshold (), 10);
   }
 
   /**
@@ -37,9 +37,9 @@ public class TagExtractorTest
   {
     final TagExtractor extractor = new TagExtractor (null, 0);
     extractor.setTag ("");
-    assertEquals (extractor.tag_, "");
+    assertEquals (extractor.getTag (), "");
     extractor.setTag (null);
-    assertEquals (extractor.tag_, null);
+    assertEquals (extractor.getTag (), null);
   }
 
   /**
@@ -108,11 +108,11 @@ public class TagExtractorTest
     final TagExtractor extractor = new TagExtractor ("abstract", 10);
     extractor.setTag ("abstract");
     extractor.add ("This is a sample text.");
-    assertEquals (extractor.buf_.toString (), "This is a sample text.");
-    assertEquals (extractor.tag_, "abstract");
+    assertEquals (extractor.getBuf (), "This is a sample text.");
+    assertEquals (extractor.getTag (), "abstract");
     extractor.clear ();
-    assertEquals (extractor.buf_.toString (), "");
-    assertEquals (extractor.tag_, null);
+    assertEquals (extractor.getBuf (), "");
+    assertEquals (extractor.getTag (), null);
   }
 
 }

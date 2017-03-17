@@ -10,6 +10,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nonnull;
+
 import com.cybozu.labs.langdetect.util.NGram;
 
 /**
@@ -94,14 +96,14 @@ public class Detector
    * Constructor. Detector instance can be constructed via
    * {@link DetectorFactory#create()}.
    *
-   * @param factory
+   * @param aFactory
    *        {@link DetectorFactory} instance (only DetectorFactory inside)
    */
-  public Detector (final DetectorFactory factory)
+  public Detector (@Nonnull final DetectorFactory aFactory)
   {
-    m_aWordLangProbMap = factory.wordLangProbMap;
-    m_aLanglist = factory.langlist;
-    m_aSeed = factory.seed;
+    m_aWordLangProbMap = aFactory.getWordLangProbMap ();
+    m_aLanglist = DetectorFactory.getLangList ();
+    m_aSeed = aFactory.getSeed ();
   }
 
   /**

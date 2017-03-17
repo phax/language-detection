@@ -17,6 +17,8 @@ import java.util.Set;
 import com.cybozu.labs.langdetect.util.LangProfile;
 import com.helger.commons.io.EAppend;
 import com.helger.commons.io.file.FileHelper;
+import com.helger.commons.io.stream.NonBlockingBufferedReader;
+import com.helger.commons.string.StringParser;
 import com.helger.json.IJson;
 import com.helger.json.serialize.JsonReader;
 import com.helger.json.serialize.JsonWriter;
@@ -28,16 +30,23 @@ import com.helger.json.serialize.JsonWriter;
  *
  * @author Nakatani Shuyo
  */
-public class Command
+public class MainCommand
 {
   /** smoothing default parameter (ELE) */
   private static final double DEFAULT_ALPHA = 0.5;
 
   /** for Command line easy parser */
-  private final Map <String, String> opt_with_value = new HashMap<> ();
-  private final Map <String, String> values = new HashMap<> ();
-  private final Set <String> opt_without_value = new HashSet<> ();
-  private final List <String> arglist = new ArrayList<> ();
+  private final Map <String, String> m_aCmdOptWithValue = new HashMap<> ();
+  private final Map <String, String> m_aCmdValues = new HashMap<> ();
+  private final Set <String> m_aCmdOptWithoutValue = new HashSet<> ();
+  private final List <String> m_aCmdArgs = new ArrayList<> ();
+
+  private void _addOpt (final String opt, final String key, final String value)
+  {
+    m_aCmdOptWithValue.put (opt, key);
+    if (value != null)
+      m_aCmdValues.put (key, value);
+  }
 
   /**
    * Command line easy parser
@@ -49,65 +58,42 @@ public class Command
   {
     for (int i = 0; i < args.length; ++i)
     {
-      if (opt_with_value.containsKey (args[i]))
+      if (m_aCmdOptWithValue.containsKey (args[i]))
       {
-        final String key = opt_with_value.get (args[i]);
-        values.put (key, args[i + 1]);
+        final String key = m_aCmdOptWithValue.get (args[i]);
+        m_aCmdValues.put (key, args[i + 1]);
         ++i;
       }
       else
         if (args[i].startsWith ("-"))
         {
-          opt_without_value.add (args[i]);
+          m_aCmdOptWithoutValue.add (args[i]);
         }
         else
         {
-          arglist.add (args[i]);
+          m_aCmdArgs.add (args[i]);
         }
     }
   }
 
-  private void _addOpt (final String opt, final String key, final String value)
+  private String _getCmdValueAsString (final String key)
   {
-    opt_with_value.put (opt, key);
-    values.put (key, value);
+    return m_aCmdValues.get (key);
   }
 
-  private String _getString (final String key)
+  private Long _getCmdValueAsLong (final String key)
   {
-    return values.get (key);
+    return StringParser.parseLongObj (_getCmdValueAsString (key));
   }
 
-  private Long _getLong (final String key)
+  private double _getCmdValueAsDouble (final String key, final double defaultValue)
   {
-    final String value = _getString (key);
-    if (value == null)
-      return null;
-    try
-    {
-      return Long.valueOf (value);
-    }
-    catch (final NumberFormatException e)
-    {
-      return null;
-    }
+    return StringParser.parseDouble (_getCmdValueAsString (key), defaultValue);
   }
 
-  private double _getDouble (final String key, final double defaultValue)
+  private boolean _hasOptWithoutValue (final String opt)
   {
-    try
-    {
-      return Double.parseDouble (_getString (key));
-    }
-    catch (final NumberFormatException e)
-    {
-      return defaultValue;
-    }
-  }
-
-  private boolean _hasOpt (final String opt)
-  {
-    return opt_without_value.contains (opt);
+    return m_aCmdOptWithoutValue.contains (opt);
   }
 
   /**
@@ -131,24 +117,21 @@ public class Command
 
   /**
    * load profiles
-   *
-   * @return false if load success
    */
-  private boolean _loadProfile ()
+  private void _loadProfile ()
   {
-    final String profileDirectory = _getString ("directory") + "/";
+    final String profileDirectory = _getCmdValueAsString ("directory") + "/";
     try
     {
       DetectorFactory.loadProfile (profileDirectory);
-      final Long seed = _getLong ("seed");
+      final Long seed = _getCmdValueAsLong ("seed");
       if (seed != null)
         DetectorFactory.setSeed (seed.longValue ());
-      return false;
     }
     catch (final LangDetectException e)
     {
       System.err.println ("ERROR: " + e.getMessage ());
-      return true;
+      throw new IllegalStateException (e);
     }
   }
 
@@ -159,10 +142,10 @@ public class Command
    * usage: --genprofile -d [abstracts directory] [language names]
    * </pre>
    */
-  public void generateProfile ()
+  private void _generateProfile ()
   {
-    final File directory = new File (_getString ("directory"));
-    for (final String lang : arglist)
+    final File directory = new File (_getCmdValueAsString ("directory"));
+    for (final String lang : m_aCmdArgs)
     {
       final File file = _searchFile (directory, lang + "wiki-.*-abstract\\.xml.*");
       if (file == null)
@@ -174,7 +157,7 @@ public class Command
       try
       {
         final LangProfile profile = GenProfile.loadFromWikipediaAbstract (lang, file);
-        if (_getString ("update") != null)
+        if (_getCmdValueAsString ("update") != null)
         {
           final IJson aJson = JsonReader.readFromFile (file);
           if (aJson == null || !aJson.isObject ())
@@ -188,7 +171,7 @@ public class Command
           profile.omitLessFreq ();
         }
 
-        final File profile_path = new File (_getString ("directory") + "/profiles/" + lang);
+        final File profile_path = new File (_getCmdValueAsString ("directory") + "/profiles/" + lang);
         new JsonWriter ().writeToWriter (profile.getAsJson (),
                                          FileHelper.getBufferedWriter (profile_path,
                                                                        EAppend.TRUNCATE,
@@ -210,19 +193,19 @@ public class Command
    */
   private void _generateProfileFromText ()
   {
-    if (arglist.size () != 1)
+    if (m_aCmdArgs.size () != 1)
     {
       System.err.println ("Need to specify text file path");
       return;
     }
-    final File file = new File (arglist.get (0));
+    final File file = new File (m_aCmdArgs.get (0));
     if (!file.exists ())
     {
       System.err.println ("Need to specify existing text file path");
       return;
     }
 
-    final String lang = _getString ("lang");
+    final String lang = _getCmdValueAsString ("lang");
     if (lang == null)
     {
       System.err.println ("Need to specify langage code(-l)");
@@ -233,7 +216,7 @@ public class Command
     {
       final LangProfile profile = GenProfile.loadFromText (lang, file);
       final File profile_path = new File (lang);
-      if (_getString ("update") != null)
+      if (_getCmdValueAsString ("update") != null)
       {
         final IJson aJson = JsonReader.readFromFile (profile_path);
         if (aJson == null || !aJson.isObject ())
@@ -268,7 +251,7 @@ public class Command
    */
   private void _cleanupProfile ()
   {
-    if (arglist.size () != 1)
+    if (m_aCmdArgs.size () != 1)
     {
       System.err.println ("Need to specify profile file path");
       return;
@@ -276,7 +259,7 @@ public class Command
 
     try
     {
-      final File profile_path = new File (arglist.get (0));
+      final File profile_path = new File (m_aCmdArgs.get (0));
       final IJson aJson = JsonReader.readFromFile (profile_path);
       if (aJson == null || !aJson.isObject ())
         throw new LangDetectException (ELangDetectErrorCode.FileLoadError, "Failed to parse JSON from " + profile_path);
@@ -302,17 +285,16 @@ public class Command
    * usage: --detectlang -d [profile directory] -a [alpha] -s [seed] [test file(s)]
    * </pre>
    */
-  public void detectLang ()
+  private void _detectLang ()
   {
-    if (_loadProfile ())
-      return;
-    for (final String filename : arglist)
+    _loadProfile ();
+    for (final String filename : m_aCmdArgs)
     {
       try (final BufferedReader is = new BufferedReader (new InputStreamReader (new FileInputStream (filename),
                                                                                 StandardCharsets.UTF_8)))
       {
-        final Detector detector = DetectorFactory.create (_getDouble ("alpha", DEFAULT_ALPHA));
-        if (_hasOpt ("--debug"))
+        final Detector detector = DetectorFactory.create (_getCmdValueAsDouble ("alpha", DEFAULT_ALPHA));
+        if (_hasOptWithoutValue ("--debug"))
           detector.setVerbose ();
         detector.append (is);
         System.out.println (filename + ":" + detector.getProbabilities ());
@@ -337,15 +319,14 @@ public class Command
    *   [correct language name]\t[text body for test]\n
    * </pre>
    */
-  public void batchTest ()
+  private void _batchTest ()
   {
-    if (_loadProfile ())
-      return;
-    final HashMap <String, ArrayList <String>> result = new HashMap<> ();
-    for (final String filename : arglist)
+    _loadProfile ();
+    final Map <String, ArrayList <String>> result = new HashMap<> ();
+    for (final String filename : m_aCmdArgs)
     {
-      try (BufferedReader is = new BufferedReader (new InputStreamReader (new FileInputStream (filename),
-                                                                          StandardCharsets.UTF_8)))
+      try (NonBlockingBufferedReader is = new NonBlockingBufferedReader (new InputStreamReader (new FileInputStream (filename),
+                                                                                                StandardCharsets.UTF_8)))
       {
         while (is.ready ())
         {
@@ -356,7 +337,7 @@ public class Command
           final String correctLang = line.substring (0, idx);
           final String text = line.substring (idx + 1);
 
-          final Detector detector = DetectorFactory.create (_getDouble ("alpha", DEFAULT_ALPHA));
+          final Detector detector = DetectorFactory.create (_getCmdValueAsDouble ("alpha", DEFAULT_ALPHA));
           detector.append (text);
           String lang = "";
           try
@@ -370,7 +351,7 @@ public class Command
           if (!result.containsKey (correctLang))
             result.put (correctLang, new ArrayList <String> ());
           result.get (correctLang).add (lang);
-          if (_hasOpt ("--debug"))
+          if (_hasOptWithoutValue ("--debug"))
             System.out.println (correctLang +
                                 "," +
                                 lang +
@@ -437,37 +418,46 @@ public class Command
    */
   public static void main (final String [] args)
   {
-    final Command command = new Command ();
+    final MainCommand command = new MainCommand ();
     command._addOpt ("-d", "directory", "./");
-    command._addOpt ("-a", "alpha", "" + DEFAULT_ALPHA);
+    command._addOpt ("-a", "alpha", Double.toString (DEFAULT_ALPHA));
     command._addOpt ("-s", "seed", null);
     command._addOpt ("-l", "lang", null);
     command._addOpt ("-u", "update", null);
     command._parse (args);
 
-    if (command._hasOpt ("--genprofile"))
+    if (command._hasOptWithoutValue ("--genprofile"))
     {
-      command.generateProfile ();
+      command._generateProfile ();
     }
     else
-      if (command._hasOpt ("--genprofile-text"))
+      if (command._hasOptWithoutValue ("--genprofile-text"))
       {
         command._generateProfileFromText ();
       }
       else
-        if (command._hasOpt ("--detectlang"))
+        if (command._hasOptWithoutValue ("--detectlang"))
         {
-          command.detectLang ();
+          command._detectLang ();
         }
         else
-          if (command._hasOpt ("--batchtest"))
+          if (command._hasOptWithoutValue ("--batchtest"))
           {
-            command.batchTest ();
+            command._batchTest ();
           }
           else
-            if (command._hasOpt ("--trim-profile"))
+            if (command._hasOptWithoutValue ("--trim-profile"))
             {
               command._cleanupProfile ();
+            }
+            else
+            {
+              System.err.println ("Command missing!");
+              System.err.println ("  --genprofile");
+              System.err.println ("  --genprofile-text");
+              System.err.println ("  --detectlang");
+              System.err.println ("  --batchtest");
+              System.err.println ("  --trim-profile");
             }
   }
 

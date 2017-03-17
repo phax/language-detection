@@ -27,14 +27,24 @@ import com.helger.json.serialize.JsonReader;
  */
 public class DetectorFactory
 {
-  final Map <String, double []> wordLangProbMap = new HashMap<> ();
-  final List <String> langlist = new ArrayList<> ();
-  Long seed;
+  private final Map <String, double []> m_aWordLangProbMap = new HashMap<> ();
+  private final List <String> m_aLanglist = new ArrayList<> ();
+  private Long m_aSeed;
 
   private DetectorFactory ()
   {}
 
   private static DetectorFactory instance_ = new DetectorFactory ();
+
+  Map <String, double []> getWordLangProbMap ()
+  {
+    return m_aWordLangProbMap;
+  }
+
+  Long getSeed ()
+  {
+    return m_aSeed;
+  }
 
   /**
    * Load profiles from specified directory. This method must be called once
@@ -127,21 +137,21 @@ public class DetectorFactory
   static void addProfile (final LangProfile profile, final int index, final int langsize) throws LangDetectException
   {
     final String lang = profile.getName ();
-    if (instance_.langlist.contains (lang))
+    if (instance_.m_aLanglist.contains (lang))
       throw new LangDetectException (ELangDetectErrorCode.DuplicateLangError, "duplicate the same language profile");
 
-    instance_.langlist.add (lang);
+    instance_.m_aLanglist.add (lang);
     for (final String word : profile.getAllGrams ())
     {
-      if (!instance_.wordLangProbMap.containsKey (word))
+      if (!instance_.m_aWordLangProbMap.containsKey (word))
       {
-        instance_.wordLangProbMap.put (word, new double [langsize]);
+        instance_.m_aWordLangProbMap.put (word, new double [langsize]);
       }
       final int length = word.length ();
       if (length >= 1 && length <= 3)
       {
         final double prob = profile.getFrequency (word).doubleValue () / profile.getNWord (length - 1);
-        instance_.wordLangProbMap.get (word)[index] = prob;
+        instance_.m_aWordLangProbMap.get (word)[index] = prob;
       }
     }
   }
@@ -151,8 +161,8 @@ public class DetectorFactory
    */
   static public void clear ()
   {
-    instance_.langlist.clear ();
-    instance_.wordLangProbMap.clear ();
+    instance_.m_aLanglist.clear ();
+    instance_.m_aWordLangProbMap.clear ();
   }
 
   /**
@@ -185,7 +195,7 @@ public class DetectorFactory
 
   private static Detector _createDetector () throws LangDetectException
   {
-    if (instance_.langlist.isEmpty ())
+    if (instance_.m_aLanglist.isEmpty ())
       throw new LangDetectException (ELangDetectErrorCode.NeedLoadProfileError, "need to load profiles");
     final Detector detector = new Detector (instance_);
     return detector;
@@ -193,11 +203,11 @@ public class DetectorFactory
 
   public static void setSeed (final long seed)
   {
-    instance_.seed = Long.valueOf (seed);
+    instance_.m_aSeed = Long.valueOf (seed);
   }
 
   public static final List <String> getLangList ()
   {
-    return Collections.unmodifiableList (instance_.langlist);
+    return Collections.unmodifiableList (instance_.m_aLanglist);
   }
 }

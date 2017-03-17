@@ -15,7 +15,7 @@ public class NGram
 {
   public final static int N_GRAM = 3;
   private static final String LATIN1_EXCLUDED = Messages.getString ("NGram.LATIN1_EXCLUDE");
-  private static Map <Character, Character> cjk_map;
+  private static final Map <Character, Character> CJK_MAP;
 
   private StringBuilder m_aGrams;
   private boolean m_bCapitalWord;
@@ -75,9 +75,14 @@ public class NGram
   {
     if (m_bCapitalWord)
       return null;
-    final int len = m_aGrams.length ();
-    if (n < 1 || n > 3 || len < n)
+
+    if (n < 1 || n > N_GRAM)
       return null;
+
+    final int len = m_aGrams.length ();
+    if (len < n)
+      return null;
+
     if (n == 1)
     {
       final char ch = m_aGrams.charAt (len - 1);
@@ -155,7 +160,7 @@ public class NGram
                       if (aUnicodeBlock == UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS)
                       {
                         final Character aChar = Character.valueOf (ch);
-                        final Character aMapped = cjk_map.get (aChar);
+                        final Character aMapped = CJK_MAP.get (aChar);
                         if (aMapped != null)
                           ch = aMapped.charValue ();
                       }
@@ -335,15 +340,14 @@ public class NGram
                                        Messages.getString ("NGram.KANJI_7_37"), };
   static
   {
-    cjk_map = new HashMap<> ();
+    CJK_MAP = new HashMap<> ();
     for (final String cjk_list : CJK_CLASS)
     {
-      final char representative = cjk_list.charAt (0);
+      final Character representative = Character.valueOf (cjk_list.charAt (0));
       for (int i = 0; i < cjk_list.length (); ++i)
       {
-        cjk_map.put (cjk_list.charAt (i), representative);
+        CJK_MAP.put (Character.valueOf (cjk_list.charAt (i)), representative);
       }
     }
   }
-
 }

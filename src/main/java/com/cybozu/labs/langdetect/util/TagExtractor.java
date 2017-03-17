@@ -1,5 +1,8 @@
 package com.cybozu.labs.langdetect.util;
 
+import com.helger.commons.annotation.VisibleForTesting;
+import com.helger.commons.equals.EqualsHelper;
+
 /**
  * {@link TagExtractor} is a class which extracts inner texts of specified tag.
  * Users don't use this class directly.
@@ -8,54 +11,77 @@ package com.cybozu.labs.langdetect.util;
  */
 public class TagExtractor
 {
-  /* package scope */ String target_;
-  /* package scope */ int threshold_;
-  /* package scope */ StringBuffer buf_;
-  /* package scope */ String tag_;
-  private int count_;
+  private final String m_sTarget;
+  private final int m_nThreshold;
+  private StringBuilder m_aBuf;
+  private String m_sTag;
+  private int m_nCount;
 
   public TagExtractor (final String tag, final int threshold)
   {
-    target_ = tag;
-    threshold_ = threshold;
-    count_ = 0;
+    m_sTarget = tag;
+    m_nThreshold = threshold;
+    m_nCount = 0;
     clear ();
   }
 
-  public int count ()
+  @VisibleForTesting
+  String getTarget ()
   {
-    return count_;
+    return m_sTarget;
   }
 
-  public void clear ()
+  @VisibleForTesting
+  int getThreshold ()
   {
-    buf_ = new StringBuffer ();
-    tag_ = null;
+    return m_nThreshold;
+  }
+
+  @VisibleForTesting
+  String getBuf ()
+  {
+    return m_aBuf.toString ();
+  }
+
+  @VisibleForTesting
+  String getTag ()
+  {
+    return m_sTag;
   }
 
   public void setTag (final String tag)
   {
-    tag_ = tag;
+    m_sTag = tag;
   }
 
-  public void add (final String line)
+  public int count ()
   {
-    if (tag_ == target_ && line != null)
+    return m_nCount;
+  }
+
+  public void clear ()
+  {
+    m_aBuf = new StringBuilder ();
+    m_sTag = null;
+  }
+
+  public void add (final String sLine)
+  {
+    if (EqualsHelper.equals (m_sTag, m_sTarget) && sLine != null)
     {
-      buf_.append (line);
+      m_aBuf.append (sLine);
     }
   }
 
   public String closeTag ()
   {
-    String st = null;
-    if (tag_ == target_ && buf_.length () > threshold_)
+    String ret = null;
+    if (EqualsHelper.equals (m_sTag, m_sTarget) && m_aBuf.length () > m_nThreshold)
     {
-      st = buf_.toString ();
-      ++count_;
+      ret = m_aBuf.toString ();
+      ++m_nCount;
     }
     clear ();
-    return st;
+    return ret;
   }
-
 }

@@ -120,9 +120,6 @@ public class LangIdV2
     return scratchFv;
   }
 
-  /**
-   *
-   */
   public DetectedLanguage classify (final CharSequence str, final boolean normalizeConfidence)
   {
     final int [] fv = instanceToFeatureVector (str);

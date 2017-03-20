@@ -49,6 +49,9 @@ public interface ILangIdClassifier
 
   /**
    * Update internal buffers and feature vectors with more text.
+   * 
+   * @param str
+   *        to append
    */
   public abstract void append (CharSequence str);
 
@@ -56,6 +59,9 @@ public interface ILangIdClassifier
    * Update internal buffers and feature vectors with more UTF8-encoded text.
    * Care should be given to proper text segmentation into unicode points
    * (otherwise broken features may be identified).
+   *
+   * @param buffer
+   *        buffer
    */
   public abstract void append (ByteBuffer buffer);
 
@@ -63,12 +69,23 @@ public interface ILangIdClassifier
    * Update internal buffers and feature vectors with more UTF8-encoded text.
    * Care should be given to proper text segmentation into unicode points
    * (otherwise broken features may be identified).
+   *
+   * @param array
+   *        array
+   * @param start
+   *        offset
+   * @param length
+   *        length
    */
   public abstract void append (byte [] array, int start, int length);
 
   /**
    * Apply classification to the current buffer state. This may be called while
    * appending (to abort early if the desired confidence has been reached).
+   *
+   * @param normalizeConfidence
+   *        normalize confidence?
+   * @return {@link DetectedLanguage}
    */
   public abstract DetectedLanguage classify (boolean normalizeConfidence);
 
@@ -77,6 +94,10 @@ public interface ILangIdClassifier
    * sorted, cannot be manipulated and will be reused on any subsequent calls to
    * this object, including {@link DetectedLanguage} objects inside. If the
    * result is to be stored somewhere, it needs to be deeply cloned.
+   *
+   * @param normalizeConfidence
+   *        normalize confidence?
+   * @return List of {@link DetectedLanguage}
    */
   public abstract List <DetectedLanguage> rank (boolean normalizeConfidence);
 

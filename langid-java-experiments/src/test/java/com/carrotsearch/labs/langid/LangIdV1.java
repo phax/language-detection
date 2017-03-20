@@ -85,9 +85,6 @@ public class LangIdV1
     return arr;
   }
 
-  /**
-   *
-   */
   public DetectedLanguage classify (final CharSequence str)
   {
     final int [] fv = instance2fv (str);

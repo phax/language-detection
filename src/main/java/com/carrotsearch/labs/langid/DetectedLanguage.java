@@ -5,29 +5,29 @@ package com.carrotsearch.labs.langid;
  */
 public final class DetectedLanguage implements Cloneable
 {
-  public String langCode;
-  public float confidence;
+  public String m_sLangCode;
+  public float m_fConfidence;
 
   public DetectedLanguage (final String lang, final float confidence)
   {
-    this.langCode = lang;
-    this.confidence = confidence;
+    this.m_sLangCode = lang;
+    this.m_fConfidence = confidence;
   }
 
   public String getLangCode ()
   {
-    return langCode;
+    return m_sLangCode;
   }
 
   public double getConfidence ()
   {
-    return confidence;
+    return m_fConfidence;
   }
 
   @Override
   protected DetectedLanguage clone ()
   {
-    return new DetectedLanguage (langCode, confidence);
+    return new DetectedLanguage (m_sLangCode, m_fConfidence);
   }
 
   @Override
@@ -42,7 +42,7 @@ public final class DetectedLanguage implements Cloneable
     if (other != null && other instanceof DetectedLanguage)
     {
       final DetectedLanguage d = (DetectedLanguage) other;
-      return Float.compare (this.confidence, d.confidence) == 0 && equals (langCode, d.langCode);
+      return Float.compare (this.m_fConfidence, d.m_fConfidence) == 0 && equals (m_sLangCode, d.m_sLangCode);
     }
     return false;
   }
@@ -55,6 +55,6 @@ public final class DetectedLanguage implements Cloneable
   @Override
   public String toString ()
   {
-    return "[" + langCode + ", conf.: " + confidence + "]";
+    return "[" + m_sLangCode + ", conf.: " + m_fConfidence + "]";
   }
 }

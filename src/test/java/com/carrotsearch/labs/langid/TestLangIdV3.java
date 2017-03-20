@@ -27,7 +27,7 @@ public class TestLangIdV3
                                                            "Piano italiano per la crescita: negoziato in Europa sugli investimenti «virtuosi»" } })
     {
       final DetectedLanguage result = langid.classify (langString[1], true);
-      assertEquals (langString[0], result.langCode);
+      assertEquals (langString[0], result.m_sLangCode);
     }
   }
 

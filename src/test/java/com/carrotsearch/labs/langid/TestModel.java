@@ -47,9 +47,9 @@ public class TestModel
       final DetectedLanguage c1 = v1.classify (in, true);
       final DetectedLanguage c2 = v2.classify (in, true);
 
-      if (allowed.contains (c1.langCode))
+      if (allowed.contains (c1.m_sLangCode))
       {
-        assertEquals (c1.langCode, c2.langCode);
+        assertEquals (c1.m_sLangCode, c2.m_sLangCode);
       }
     }
   }

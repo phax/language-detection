@@ -232,7 +232,7 @@ public final class LangIdV3 implements ILangIdClassifier
     {
       final float confidence = normalizeConfidence ? normalizeConfidenceAsProbability (probs, c) : probs[c];
 
-      m_aRankList.get (c).confidence = confidence;
+      m_aRankList.get (c).m_fConfidence = confidence;
     }
 
     return m_aRankListView;

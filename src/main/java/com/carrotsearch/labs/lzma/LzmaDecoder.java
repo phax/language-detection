@@ -67,8 +67,9 @@ public class LzmaDecoder
         return (byte) symbol;
       }
 
-      public byte decodeWithMatchByte (final LzmaBitDecoder rangeDecoder, byte matchByte) throws IOException
+      public byte decodeWithMatchByte (final LzmaBitDecoder rangeDecoder, final byte nMatchByte) throws IOException
       {
+        byte matchByte = nMatchByte;
         int symbol = 1;
         do
         {

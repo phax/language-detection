@@ -8,7 +8,6 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.carrotsearch.labs.langid.DoubleLinkedCountingSet;
 import com.helger.commons.mutable.MutableInt;
 import com.helger.commons.random.RandomHelper;
 

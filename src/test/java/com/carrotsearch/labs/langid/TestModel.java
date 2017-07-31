@@ -7,10 +7,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import com.carrotsearch.labs.langid.DetectedLanguage;
-import com.carrotsearch.labs.langid.LangIdV3;
-import com.carrotsearch.labs.langid.Model;
-import com.helger.commons.collection.ext.CommonsHashSet;
+import com.helger.commons.collection.impl.CommonsHashSet;
 
 public class TestModel
 {

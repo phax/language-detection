@@ -10,8 +10,6 @@ import javax.annotation.Nonnull;
 
 import org.junit.Test;
 
-import com.carrotsearch.labs.langid.DetectedLanguage;
-import com.carrotsearch.labs.langid.LangIdV3;
 import com.helger.commons.random.RandomHelper;
 
 public class TestLangIdV3
